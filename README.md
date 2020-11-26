@@ -18,8 +18,6 @@
 <p align="center">
     An automated recon framework for web applications
     <br />
-    <a href="https://rengine.wiki">reNgine Documentation</a>
-    .
     <a href="https://github.com/yogeshojha/rengine/blob/master/CHANGELOG.md">What's new</a>
     ·
     <a href="https://github.com/yogeshojha/rengine/blob/master/CONTRIBUTING.md">Contribute</a>
@@ -32,16 +30,20 @@
 ## Table of Contents
 
 * [About reNgine](#about-reNgine)
-    * [What is reNgine](#about-reNgine)
-    * [Features](#features)
-    * [What it is not](#what-it-is-not)
-    * [Screenshots](#screenshots)
-* [Installation](#installation)
+  * [What is reNgine](#about-reNgine)
+  * [Features](#features)
+  * [What it is not](#what-it-is-not)
+  * [Screenshots](#screenshots)
+* [Getting Started](#getting-started)
+  * [Prerequisites](#prerequisites)
+  * [Installation](#installation)
+  * [Building reNgine](#build-rengine)
+  * [Register Account](#register-account)
+  * [Update reNgine](#how-to-update)
+* [Usage](#usage)
 * [Contributing](#contributing)
 * [License](#license)
 * [Acknowledgements & Credits](#acknowledgements-and-credits)
-
-**reNgine official documentation has been released. All the installation instructions and other information regarding reNgine has been documented at** [https://rengine.wiki](https://rengine.wiki)
 
 ## About reNgine
 
@@ -97,9 +99,98 @@ reNgine is not a:
 
 Of course, at this point, reNgine does not give the best of the best result compared to other tools, but reNgine has certainly minimal efforts. Also, I am continuously adding new features. You may help me on this journey by creating a PR filled with new features and bug fixes. Please have a look at the [Contributing](#contributing) section before doing so.
 
-## Installation
+### Flow
 
-All the installation instructions have been moved to wiki documentation. Find the wiki documentation here [https://rengine.wiki](https://rengine.wiki)
+![](https://user-images.githubusercontent.com/17223002/86907633-fd467480-c132-11ea-82ac-35eb071a7453.png)
+
+## Getting Started
+
+To get a local copy up and running, follow these simple example steps.
+
+```shell
+git clone https://github.com/yogeshojha/rengine.git
+cd rengine
+```
+
+### Prerequisites
+
+* Docker
+  * Install docker based on your OS from [here](https://www.docker.com/get-started)
+* docker-compose
+  * Installation instructions for docker-compose from [here](https://docs.docker.com/compose/install/)
+* make
+
+### Installation
+
+##### Installation instructions has been changed, please read the documentation carefully.
+
+There are currently two ways of setting up the reNgine. Using Makefile is the easiest and is recommended:
+
+![makefile](https://user-images.githubusercontent.com/8843222/88650319-e7402a00-d0c8-11ea-9ed8-4b1193862efe.png)
+
+If you are setting up inside VPS with https, Makefile makes process so much simpler.
+
+#### Installation of prerequisites
+
+```shell
+make install
+```
+_This command will ask you for a domain name, this is the one you want to use for Rengine, make sure you have a DNS entry pointing to your server. The email must also be valid to avoid errors when generating certificates._
+
+#### Build reNgine
+
+```shell
+make build
+```
+
+The build process may take some time.
+
+Alternatively, you also can run the project with pre-built Docker images (with 2FA enabled, you have to [create a new personal access token](https://github.com/settings/tokens/new) with `read:packages` scope):
+
+```shell
+make pull
+```
+
+#### Usage
+
+> :warning: reNgine does fingerprinting, port scanning, and banner grabbing, which might be illegal in some countries. Please make sure you are authorized to perform reconnaissance on the targeted domain before using this tool.
+
+If build process is successful, you can run reNgine by using the command
+
+```shell
+make up
+```
+
+The web application can then be accessed from [https://127.0.0.1](https://127.0.0.1), or on your VPS, `https://your_ip`
+
+#### Registering Account
+
+Once the application is up and running, you need an account for reNgine:
+
+```shell
+make username
+```
+
+You may now enter your username and password. Remember to keep a secure password.
+
+#### How to update
+
+We may add new features and fixes regularly. To get the latest version of reNgine up and running, you need to follow the following steps:
+
+* Get the latest changes
+Assuming that you are inside reNgine directory:
+
+```shell
+git pull
+```
+
+* Build the latest changes
+
+```shell
+make build
+```
+
+That is all, you can then run `make up` to run the latest version of reNgine.
 
 ## Contributing
 
