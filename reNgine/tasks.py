@@ -317,7 +317,7 @@ def doScan(domain_id, scan_history_id, scan_type, engine_type):
         # background thread later
         httpx_results_file = results_dir + current_scan_dir + '/httpx.json'
 
-        httpx_command = 'cat {} | httpx -json -cdn -o {}'.format(
+        httpx_command = 'cat {} | httpx -cdn -json -o {}'.format(
             subdomain_scan_results_file, httpx_results_file)
         os.system(httpx_command)
 
@@ -337,7 +337,8 @@ def doScan(domain_id, scan_history_id, scan_type, engine_type):
                 sub_domain.http_status = json_st['status-code']
                 sub_domain.page_title = json_st['title']
                 sub_domain.content_length = json_st['content-length']
-                sub_domain.ip_address = json_st['ip']
+                if 'ip' in json_st:
+                    sub_domain.ip_address = json_st['ip']
                 if 'cdn' in json_st:
                     sub_domain.is_ip_cdn = json_st['cdn']
                 if 'cnames' in json_st:
@@ -511,8 +512,6 @@ def doScan(domain_id, scan_history_id, scan_type, engine_type):
         if(task.scan_type.fetch_url):
             update_last_activity(activity_id, 2)
             activity_id = create_scan_activity(task, "Fetching endpoints", 1)
-            wayback_results_file = results_dir + current_scan_dir + '/url_wayback.json'
-
             '''
             It first runs gau to gather all urls from wayback, then we will use hakrawler to identify more urls
             '''
@@ -525,22 +524,148 @@ def doScan(domain_id, scan_history_id, scan_type, engine_type):
 
             os.system(settings.TOOL_LOCATION + 'get_urls.sh {} {} {}'.format(domain.domain_name, current_scan_dir, tools))
 
-            url_results_file = results_dir + current_scan_dir + '/all_urls.json'
+            if 'aggressive' in yaml_configuration['fetch_url']['intensity']:
+                with open(subdomain_scan_results_file) as subdomain_list:
+                    for subdomain in subdomain_list:
+                        if validators.domain(subdomain.rstrip('\n')):
+                            print('-' * 20)
+                            print('Fetching URL for ' + subdomain.rstrip('\n'))
+                            print('-' * 20)
+                            os.system(
+                                settings.TOOL_LOCATION + 'get_urls.sh %s %s %s' %
+                                (subdomain.rstrip('\n'), current_scan_dir, tools))
 
-            urls_json_result = open(url_results_file, 'r')
-            lines = urls_json_result.readlines()
-            for line in lines:
-                json_st = json.loads(line.strip())
-                endpoint = WayBackEndPoint()
-                endpoint.url_of = task
-                endpoint.http_url = json_st['url']
-                endpoint.content_length = json_st['content-length']
-                endpoint.http_status = json_st['status-code']
-                endpoint.page_title = json_st['title']
-                if 'content-type' in json_st:
-                    endpoint.content_type = json_st['content-type']
-                endpoint.save()
+                            url_results_file = results_dir + current_scan_dir + '/final_httpx_urls.json'
 
+                            urls_json_result = open(url_results_file, 'r')
+                            lines = urls_json_result.readlines()
+                            for line in lines:
+                                json_st = json.loads(line.strip())
+                                endpoint = WayBackEndPoint()
+                                endpoint.url_of = task
+                                endpoint.http_url = json_st['url']
+                                endpoint.content_length = json_st['content-length']
+                                endpoint.http_status = json_st['status-code']
+                                endpoint.page_title = json_st['title']
+                                if 'content-type' in json_st:
+                                    endpoint.content_type = json_st['content-type']
+                                endpoint.save()
+            else:
+                os.system(
+                    settings.TOOL_LOCATION + 'get_urls.sh %s %s %s' %
+                    (domain.domain_name, current_scan_dir, tools))
+
+                url_results_file = results_dir + current_scan_dir + '/final_httpx_urls.json'
+
+                urls_json_result = open(url_results_file, 'r')
+                lines = urls_json_result.readlines()
+                for line in lines:
+                    json_st = json.loads(line.strip())
+                    endpoint = WayBackEndPoint()
+                    endpoint.url_of = task
+                    endpoint.http_url = json_st['url']
+                    endpoint.content_length = json_st['content-length']
+                    endpoint.http_status = json_st['status-code']
+                    endpoint.page_title = json_st['title']
+                    if 'content-type' in json_st:
+                        endpoint.content_type = json_st['content-type']
+                    endpoint.save()
+
+        '''
+        Run Nuclei Scan
+        '''
+        if(task.scan_type.vulnerability_scan):
+            update_last_activity(activity_id, 2)
+            activity_id = create_scan_activity(task, "Vulnerability Scan", 1)
+
+            vulnerability_result_path = results_dir + \
+                current_scan_dir + '/vulnerability.json'
+
+            nuclei_scan_urls = results_dir + current_scan_dir + \
+                '/alive.txt'
+
+            '''
+            TODO: if endpoints are scanned, append the alive subdomains url
+            to the final list of all the urls and run the nuclei against that
+            URL collection
+            '''
+            # if task.scan_type.fetch_url:
+            #     all_urls = results_dir + current_scan_dir + '/all_urls.txt'
+            #     os.system('cat {} >> {}'.format(nuclei_scan_urls, all_urls))
+            #     nuclei_scan_urls = all_urls
+
+            nuclei_command = 'nuclei -json -l {} -o {}'.format(
+                nuclei_scan_urls, vulnerability_result_path)
+
+            # check yaml settings for templates
+            if 'all' in yaml_configuration['vulnerability_scan']['template']:
+                template = '/root/nuclei-templates'
+            else:
+                template = yaml_configuration['vulnerability_scan']['template'].replace(
+                    ',', ' -t ')
+
+            # Update nuclei command with templates
+            nuclei_command = nuclei_command + ' -t ' + template
+
+            # # check yaml settings for  concurrency
+            # if yaml_configuration['vulnerability_scan']['concurrent'] > 0:
+            #     concurrent = yaml_configuration['vulnerability_scan']['concurrent']
+            # else:
+            #     concurrent = 10
+            #
+            # # Update nuclei command with concurrent
+            # nuclei_command = nuclei_command + ' -c ' + str(concurrent)
+
+            # yaml settings for severity
+            if 'severity' in yaml_configuration['vulnerability_scan']:
+                if yaml_configuration['vulnerability_scan']['severity'] != 'all':
+                    severity = yaml_configuration['vulnerability_scan']['severity'].replace(
+                        " ", "")
+                    # Update nuclei command based on severity
+                    nuclei_command = nuclei_command + ' -severity ' + severity
+
+            # update nuclei templates before running scan
+            os.system('nuclei -update-templates')
+            # run nuclei
+            print(nuclei_command)
+            os.system(nuclei_command)
+
+            try:
+                if os.path.isfile(vulnerability_result_path):
+                    urls_json_result = open(vulnerability_result_path, 'r')
+                    lines = urls_json_result.readlines()
+                    for line in lines:
+                        json_st = json.loads(line.strip())
+                        vulnerability = VulnerabilityScan()
+                        vulnerability.vulnerability_of = task
+                        vulnerability.name = json_st['name']
+                        vulnerability.url = json_st['matched']
+                        if json_st['severity'] == 'info':
+                            severity = 0
+                        elif json_st['severity'] == 'low':
+                            severity = 1
+                        elif json_st['severity'] == 'medium':
+                            severity = 2
+                        elif json_st['severity'] == 'high':
+                            severity = 3
+                        else:
+                            severity = 4
+                        vulnerability.severity = severity
+                        vulnerability.template_used = json_st['template']
+                        if 'description' in json_st:
+                            vulnerability.description = json_st['description']
+                        if 'matcher_name' in json_st:
+                            vulnerability.matcher_name = json_st['matcher_name']
+                        vulnerability.discovered_date = timezone.now()
+                        vulnerability.save()
+                        send_notification(
+                            "ALERT! {} vulnerability with {} severity identified in {} \n Vulnerable URL: {}".format(
+                                json_st['name'], json_st['severity'], domain.domain_name, json_st['matched']))
+            except Exception as exception:
+                print('-' * 30)
+                print(exception)
+                print('-' * 30)
+                update_last_activity(activity_id, 0)
         '''
         Once the scan is completed, save the status to successful
         '''
@@ -550,19 +675,23 @@ def doScan(domain_id, scan_history_id, scan_type, engine_type):
         logging.error(exception)
         scan_failed(task)
 
+    send_notification("reEngine finished scanning " + domain.domain_name)
+    update_last_activity(activity_id, 2)
+    activity_id = create_scan_activity(task, "Scan Completed", 2)
+    return {"status": True}
+
+
+def send_notification(message):
     notif_hook = NotificationHooks.objects.filter(send_notif=True)
     # notify on slack
     scan_status_msg = {
-        'text': "reEngine finished scanning " + domain.domain_name}
+        'text': message}
     headers = {'content-type': 'application/json'}
     for notif in notif_hook:
         requests.post(
             notif.hook_url,
             data=json.dumps(scan_status_msg),
             headers=headers)
-    update_last_activity(activity_id, 2)
-    activity_id = create_scan_activity(task, "Scan Completed", 2)
-    return {"status": True}
 
 
 def scan_failed(task):

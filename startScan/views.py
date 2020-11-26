@@ -2,7 +2,7 @@ from django.shortcuts import render, get_object_or_404
 from django.contrib import messages
 from django.http import JsonResponse, HttpResponseRedirect, HttpResponse
 from django.urls import reverse
-from startScan.models import ScanHistory, ScannedHost, ScanActivity, WayBackEndPoint
+from startScan.models import ScanHistory, ScannedHost, ScanActivity, WayBackEndPoint, VulnerabilityScan
 from django_celery_beat.models import PeriodicTask, IntervalSchedule, ClockedSchedule
 from notification.models import NotificationHooks
 from targetApp.models import Domain
@@ -22,31 +22,70 @@ def scan_history(request):
     return render(request, 'startScan/history.html', context)
 
 
-def detail_scan(request, id):
-    subdomain_count = ScannedHost.objects.filter(scan_history__id=id).count()
-    alive_count = ScannedHost.objects.filter(
-        scan_history__id=id).exclude(
-        http_status__exact=0).count()
-    scan_activity = ScanActivity.objects.filter(
-        scan_of__id=id).order_by('time')
-    endpoint_count = WayBackEndPoint.objects.filter(url_of__id=id).count()
-    endpoint_alive_count = WayBackEndPoint.objects.filter(
-        url_of__id=id, http_status__exact=200).count()
-    subdomain_takeover = ScannedHost.objects.filter(
-        scan_history__id=id, takeover__isnull=False).count()
-    history = get_object_or_404(ScanHistory, id=id)
-    context = {'scan_history_active': 'true',
-               'scan_history': scan_history,
-               'scan_activity': scan_activity,
-               'alive_count': alive_count,
-               'scan_history_id': id,
-               'subdomain_count': subdomain_count,
-               'endpoint_count': endpoint_count,
-               'endpoint_alive_count': endpoint_alive_count,
-               'history': history,
-               'subdomain_takeover': subdomain_takeover,
-               }
+def detail_scan(request, id=None):
+    if id:
+        subdomain_count = ScannedHost.objects.filter(scan_history__id=id).count()
+        alive_count = ScannedHost.objects.filter(
+            scan_history__id=id).exclude(
+            http_status__exact=0).count()
+        scan_activity = ScanActivity.objects.filter(
+            scan_of__id=id).order_by('time')
+        endpoint_count = WayBackEndPoint.objects.filter(url_of__id=id).count()
+        endpoint_alive_count = WayBackEndPoint.objects.filter(
+            url_of__id=id, http_status__exact=200).count()
+        subdomain_takeover_count = ScannedHost.objects.filter(
+            scan_history__id=id, takeover__isnull=False).count()
+        history = get_object_or_404(ScanHistory, id=id)
+        info_count = VulnerabilityScan.objects.filter(
+            vulnerability_of__id=id, severity=0).count()
+        low_count = VulnerabilityScan.objects.filter(
+            vulnerability_of__id=id, severity=1).count()
+        medium_count = VulnerabilityScan.objects.filter(
+            vulnerability_of__id=id, severity=2).count()
+        high_count = VulnerabilityScan.objects.filter(
+            vulnerability_of__id=id, severity=3).count()
+        critical_count = VulnerabilityScan.objects.filter(
+            vulnerability_of__id=id, severity=4).count()
+        total_vulnerability_count = info_count + low_count + \
+            medium_count + high_count + critical_count
+        context = {'scan_history_active': 'true',
+                   'scan_history': scan_history,
+                   'scan_activity': scan_activity,
+                   'alive_count': alive_count,
+                   'scan_history_id': id,
+                   'subdomain_count': subdomain_count,
+                   'endpoint_count': endpoint_count,
+                   'endpoint_alive_count': endpoint_alive_count,
+                   'history': history,
+                   'subdomain_takeover_count': subdomain_takeover_count,
+                   'info_count': info_count,
+                   'low_count': low_count,
+                   'medium_count': medium_count,
+                   'high_count': high_count,
+                   'critical_count': critical_count,
+                   'total_vulnerability_count': total_vulnerability_count,
+                   }
+    else:
+        context = {}
     return render(request, 'startScan/detail_scan.html', context)
+
+
+def detail_vuln_scan(request, id=None):
+    if id:
+        history = get_object_or_404(ScanHistory, id=id)
+        context = {'scan_history_id': id, 'history': history}
+    else:
+        context = {'vuln_scan_active': 'true'}
+    return render(request, 'startScan/detail_vuln_scan.html', context)
+
+
+def detail_endpoint_scan(request, id=None):
+    if id:
+        history = get_object_or_404(ScanHistory, id=id)
+        context = {'scan_history_id': id, 'history': history}
+    else:
+        context = {}
+    return render(request, 'startScan/detail_endpoint_scan.html', context)
 
 
 def start_scan_ui(request, host_id):

@@ -57,3 +57,18 @@ class ScanActivity(models.Model):
 
     def __str__(self):
         return str(self.title)
+
+
+class VulnerabilityScan(models.Model):
+    vulnerability_of = models.ForeignKey(ScanHistory, on_delete=models.CASCADE)
+    discovered_date = models.DateTimeField(null=True)
+    url = models.CharField(max_length=1000)
+    name = models.CharField(max_length=400)
+    severity = models.IntegerField()
+    description = models.CharField(max_length=1000, null=True, blank=True)
+    extracted_results = models.CharField(max_length=1000, null=True, blank=True)
+    template_used = models.CharField(max_length=100)
+    matcher_name = models.CharField(max_length=400, null=True, blank=True)
+
+    def __str__(self):
+        return self.name

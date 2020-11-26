@@ -23,5 +23,10 @@ dir_file_search:
 
 fetch_url:
     uses_tool: [ gau, hakrawler ]
+    # intensity will define how the URLs will be fetched
+    # Available Options: normal, aggressive
+    # normal: will fetch urls only for the main domain, subdomains urls will not be fetched
+    # aggressive: will fetch urls for all the subdomains
+    intensity: aggressive
 
 # To learn more about YAML config visit the official documentation at https://rengine.wiki/pentester/scan_engine/

@@ -4,7 +4,6 @@
     engine_name: Full Scan
     subdomain_discovery: true
     dir_file_search: true
-    subdomain_takeover: true
     port_scan: true
     fetch_url: true
     yaml_configuration: "subdomain_discovery:\r\n    uses_tool: [ amass-passive, subfinder,\
@@ -22,7 +21,6 @@
     engine_name: Passive Only Scan
     subdomain_discovery: true
     dir_file_search: false
-    subdomain_takeover: true
     port_scan: false
     fetch_url: true
     yaml_configuration: "subdomain_discovery:\r\n    uses_tool: [ amass-passive, subfinder,\
@@ -40,7 +38,6 @@
     engine_name: Subdomain Only Scan
     subdomain_discovery: true
     dir_file_search: false
-    subdomain_takeover: false
     port_scan: false
     fetch_url: false
     yaml_configuration: "subdomain_discovery:\r\n    uses_tool: [ amass-passive, subfinder,\
